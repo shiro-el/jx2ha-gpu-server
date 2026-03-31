@@ -149,6 +149,9 @@ def traverse(
 
     s1_mask = _options_to_mask(s1_opts)
     s2_mask = _options_to_mask(s2_opts)
+    if device is not None:
+        s1_mask = s1_mask.to(device)
+        s2_mask = s2_mask.to(device)
 
     # ── 각 플레이어의 전략 계산 ──
     trav = traversing_player
@@ -213,7 +216,7 @@ def traverse(
         return ev
 
     num_actions = trav_mask.shape[0]
-    action_values = torch.zeros(num_actions, dtype=torch.float32)
+    action_values = torch.zeros(num_actions, dtype=torch.float32, device=device)
 
     for a_idx in range(num_actions):
         if trav_mask[a_idx] == 0:
