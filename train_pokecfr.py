@@ -73,10 +73,16 @@ except ImportError:
     # 커스텀 바인딩 패치 적용
     subprocess.run([sys.executable, "patch_poke_engine.py"], check=True)
 
-    # 빌드 (maturin을 python -m 으로 실행)
+    # 빌드 — wheel 생성 후 pip install
     subprocess.run([sys.executable, "-m", "pip", "install", "maturin"], check=True)
-    subprocess.run([sys.executable, "-m", "maturin", "develop", "--release"],
+    subprocess.run([sys.executable, "-m", "maturin", "build", "--release"],
                    cwd="poke-engine/poke-engine-py", check=True)
+    import glob
+    wheels = glob.glob("poke-engine/target/wheels/poke_engine-*.whl")
+    if wheels:
+        subprocess.run([sys.executable, "-m", "pip", "install", wheels[0], "--force-reinstall"], check=True)
+    else:
+        raise RuntimeError("poke-engine wheel not found after build")
     print("poke-engine built successfully!")
 
 import random
