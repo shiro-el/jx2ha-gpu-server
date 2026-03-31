@@ -221,6 +221,7 @@ def run_deep_cfr(
                 adv_nets=adv_nets, value_net=value_net,
                 adv_buffer=adv_buffers[0], strat_buffer=strat_buffer,
                 iteration=t, max_depth=train_cfg.max_depth,
+                device=device,
             )
 
             # P2 관점 traversal
@@ -229,6 +230,7 @@ def run_deep_cfr(
                 adv_nets=adv_nets, value_net=value_net,
                 adv_buffer=adv_buffers[1], strat_buffer=strat_buffer,
                 iteration=t, max_depth=train_cfg.max_depth,
+                device=device,
             )
 
         # ── Training phase ──

@@ -78,13 +78,14 @@ def _action_idx_to_option(idx: int, options: list[str]) -> str:
     return moves[0] if moves else switches[0]
 
 
-def _add_batch_dim(data: dict) -> dict:
+def _add_batch_dim(data: dict, device: torch.device | None = None) -> dict:
     result = {}
     for k, v in data.items():
         if isinstance(v, dict):
-            result[k] = _add_batch_dim(v)
+            result[k] = _add_batch_dim(v, device)
         elif isinstance(v, torch.Tensor):
-            result[k] = v.unsqueeze(0)
+            t = v.unsqueeze(0)
+            result[k] = t.to(device) if device is not None else t
         else:
             result[k] = v
     return result
@@ -102,6 +103,7 @@ def traverse(
     max_depth: int,
     turn: int = 0,
     reach_probs: list[float] | None = None,
+    device: torch.device | None = None,
 ) -> float:
     """External sampling Deep CFR traversal (poke-engine 기반).
 
@@ -132,7 +134,7 @@ def traverse(
     # ── Depth limit → value net 평가 ──
     if turn >= max_depth:
         infoset = state_to_infoset(state, traversing_player, turn)
-        batched = _add_batch_dim(infoset)
+        batched = _add_batch_dim(infoset, device)
         return value_net(batched).item()
 
     # ── 양쪽 옵션 가져오기 ──
@@ -158,13 +160,13 @@ def traverse(
 
     # Traversing player 전략
     trav_infoset = state_to_infoset(state, trav, turn)
-    trav_batched = _add_batch_dim(trav_infoset)
+    trav_batched = _add_batch_dim(trav_infoset, device)
     trav_regrets = adv_nets[trav](trav_batched).squeeze(0)
     trav_strategy = regret_matching(trav_regrets, trav_mask)
 
     # Opponent 전략
     opp_infoset = state_to_infoset(state, opp, turn)
-    opp_batched = _add_batch_dim(opp_infoset)
+    opp_batched = _add_batch_dim(opp_infoset, device)
     opp_regrets = adv_nets[opp](opp_batched).squeeze(0)
     opp_strategy = regret_matching(opp_regrets, opp_mask)
 
@@ -206,7 +208,7 @@ def traverse(
             ev += prob * traverse(
                 next_state, trav, adv_nets, value_net,
                 adv_buffer, strat_buffer, iteration, max_depth,
-                turn + 1, reach_probs,
+                turn + 1, reach_probs, device,
             )
         return ev
 
@@ -239,7 +241,7 @@ def traverse(
             branch_value = traverse(
                 next_state, trav, adv_nets, value_net,
                 adv_buffer, strat_buffer, iteration, max_depth,
-                turn + 1, new_reach_opp,
+                turn + 1, new_reach_opp, device,
             )
             ev += prob * branch_value
 
