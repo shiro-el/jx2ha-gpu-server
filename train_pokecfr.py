@@ -56,8 +56,10 @@ except ImportError:
         os.environ["PATH"] = os.path.expanduser("~/.cargo/bin") + ":" + os.environ["PATH"]
 
     # poke-engine 클론 및 빌드
-    if not os.path.exists("poke-engine"):
-        subprocess.run(["git", "clone", "https://github.com/pmariglia/poke-engine.git"], check=True)
+    if os.path.exists("poke-engine"):
+        import shutil
+        shutil.rmtree("poke-engine")
+    subprocess.run(["git", "clone", "https://github.com/pmariglia/poke-engine.git"], check=True)
 
     # Cargo.toml을 Gen9로 수정
     cargo_toml = "poke-engine/poke-engine-py/Cargo.toml"
@@ -68,12 +70,12 @@ except ImportError:
     with open(cargo_toml, "w") as f:
         f.write(content)
 
-    # 커스텀 바인딩 패치 적용 (get_all_options, is_terminal, index-based switch)
+    # 커스텀 바인딩 패치 적용
     subprocess.run([sys.executable, "patch_poke_engine.py"], check=True)
 
-    # 빌드
+    # 빌드 (maturin을 python -m 으로 실행)
     subprocess.run([sys.executable, "-m", "pip", "install", "maturin"], check=True)
-    subprocess.run(["maturin", "develop", "--release"],
+    subprocess.run([sys.executable, "-m", "maturin", "develop", "--release"],
                    cwd="poke-engine/poke-engine-py", check=True)
     print("poke-engine built successfully!")
 
