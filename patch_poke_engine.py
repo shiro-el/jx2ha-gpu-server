@@ -10,8 +10,8 @@ LIB_RS = "poke-engine/poke-engine-py/src/lib.rs"
 with open(LIB_RS, "r") as f:
     content = f.read()
 
-# 이미 패치 적용됨
-if "get_all_options" in content:
+# 이미 패치 적용됨 (우리 커스텀 함수 존재 여부로 판단)
+if "movechoice_to_string_indexed" in content:
     print("patch_poke_engine: already patched, skipping")
     exit(0)
 
