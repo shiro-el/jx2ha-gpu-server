@@ -8,6 +8,7 @@ import torch
 from clearml import Task
 
 Task.add_requirements("torch")
+Task.add_requirements("maturin")
 task = Task.init(project_name="PokeCFR", task_name="Deep CFR v1 — Gen9 OU")
 
 # 하이퍼파라미터를 ClearML에 등록 (UI에서 수정 가능)
@@ -40,6 +41,41 @@ task.connect(params)
 task.execute_remotely(queue_name="junha-5090")
 
 # === 아래부터 RTX 5090에서 실행 ===
+
+# poke-engine 빌드 (서버에 없으면 자동 빌드)
+import subprocess, os, sys
+try:
+    import poke_engine
+except ImportError:
+    print("poke-engine not found, building from source...")
+    # Rust 설치 확인
+    if subprocess.run(["which", "cargo"], capture_output=True).returncode != 0:
+        print("Installing Rust...")
+        subprocess.run("curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y",
+                       shell=True, check=True)
+        os.environ["PATH"] = os.path.expanduser("~/.cargo/bin") + ":" + os.environ["PATH"]
+
+    # poke-engine 클론 및 빌드
+    if not os.path.exists("poke-engine"):
+        subprocess.run(["git", "clone", "https://github.com/pmariglia/poke-engine.git"], check=True)
+
+    # Cargo.toml을 Gen9로 수정
+    cargo_toml = "poke-engine/poke-engine-py/Cargo.toml"
+    with open(cargo_toml, "r") as f:
+        content = f.read()
+    content = content.replace('default = ["poke-engine/gen4"]',
+                              'default = ["poke-engine/gen9", "poke-engine/terastallization"]')
+    with open(cargo_toml, "w") as f:
+        f.write(content)
+
+    # 커스텀 바인딩 패치 적용 (get_all_options, is_terminal, index-based switch)
+    subprocess.run([sys.executable, "patch_poke_engine.py"], check=True)
+
+    # 빌드
+    subprocess.run([sys.executable, "-m", "pip", "install", "maturin"], check=True)
+    subprocess.run(["maturin", "develop", "--release"],
+                   cwd="poke-engine/poke-engine-py", check=True)
+    print("poke-engine built successfully!")
 
 import random
 from poke_engine import State, Side, Pokemon, Move
